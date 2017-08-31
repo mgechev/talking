@@ -15,11 +15,7 @@ const stdev = (n: number[]) => {
   return Math.sqrt(sum / n.length);
 };
 
-export interface ActivityCallback {
-  (confidence: number): void;
-}
-
-export interface ReadyCallback {
+export interface Callback {
   (): void;
 }
 
@@ -28,8 +24,11 @@ export class Talking {
   private analyzerNode: AnalyserNode;
   private samplingTimeout;
   private workerTimeout;
-  private callbacks: ActivityCallback[] = [];
-  private readyCallbacks: ReadyCallback[] = [];
+  private inactiveTimeout;
+  private callbacks: Callback[] = [];
+  private inactiveCallbacks: Callback[] = [];
+  private readyCallbacks: Callback[] = [];
+  private isActive = false;
 
   constructor(private stream: MediaStream) {
     this.audioContext = new AudioContext();
@@ -43,18 +42,31 @@ export class Talking {
   destroy() {
     clearTimeout(this.samplingTimeout);
     clearTimeout(this.workerTimeout);
+    clearTimeout(this.inactiveTimeout);
     this.audioContext.close();
     this.analyzerNode.disconnect();
     this.callbacks = [];
     this.readyCallbacks = [];
   }
 
-  onActivity(cb: ActivityCallback) {
+  onActive(cb: Callback) {
     this.callbacks.push(cb);
+    return () => this.callbacks.splice(this.callbacks.indexOf(cb), 1);
   }
 
-  onReady(cb: ReadyCallback) {
+  onInactive(cb: Callback) {
+    this.inactiveCallbacks.push(cb);
+    return () =>
+      this.inactiveCallbacks.splice(this.inactiveCallbacks.indexOf(cb), 1);
+  }
+
+  onReady(cb: Callback) {
     this.readyCallbacks.push(cb);
+    return () => this.readyCallbacks.splice(this.readyCallbacks.indexOf(cb), 1);
+  }
+
+  get active() {
+    return this.isActive;
   }
 
   private startSampling() {
@@ -95,14 +107,18 @@ export class Talking {
         if (!(sum > maxAvg + maxStDev || sum < maxAvg - maxStDev)) {
           maxVal = Math.max(maxVal, sum);
         }
-        if (minVal !== maxVal) {
-          const diff = maxVal - minVal;
-          const threshold = minVal + diff * 2 / 3;
-          if (sum >= threshold) {
-            const confidence = Math.min(1, threshold / sum);
-            this.callbacks.forEach(c => c(confidence));
-          } else {
-            this.callbacks.forEach(c => c(0));
+        const diff = maxVal - minVal;
+        const threshold = minVal + diff * 2 / 3;
+        if (sum >= threshold) {
+          this.callbacks.forEach(c => c());
+          this.isActive = true;
+        } else {
+          if (this.active && !this.inactiveTimeout) {
+            this.inactiveTimeout = setTimeout(() => {
+              this.inactiveCallbacks.forEach(c => c());
+              this.isActive = false;
+              this.inactiveTimeout = null;
+            }, 300);
           }
         }
       }
