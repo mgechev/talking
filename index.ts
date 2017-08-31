@@ -114,7 +114,7 @@ export class Talking {
           this.callbacks.forEach(c => c());
           this.isActive = true;
         } else {
-          if (this.active && !this.inactiveTimeout) {
+          if (this.now && !this.inactiveTimeout) {
             this.inactiveTimeout = setTimeout(() => {
               this.inactiveCallbacks.forEach(c => c());
               this.isActive = false;
