@@ -65,7 +65,7 @@ export class Talking {
     return () => this.readyCallbacks.splice(this.readyCallbacks.indexOf(cb), 1);
   }
 
-  get active() {
+  get now() {
     return this.isActive;
   }
 

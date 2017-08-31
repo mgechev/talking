@@ -23,6 +23,9 @@ let unsubscribe = talking.onInactive(() => console.log('Stopped talking.'));
 // ...
 unsubscribe();
 
+// Gets the current status. If `true` they sound is detected, otherwise `false`.
+talking.now;
+
 // Destroys the instance.
 talking.destroy();
 ```
