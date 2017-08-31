@@ -77,14 +77,14 @@ export class Talking {
     let maxAvg = 0;
     let maxStDev = 0;
     let minAvg = 0;
-    let minStDev = 0;
     let statisticsReady = false;
     this.samplingTimeout = setTimeout(() => {
       statisticsReady = true;
       maxAvg = avg(maxVals);
       minAvg = avg(minVals);
       maxStDev = stdev(maxVals);
-      minStDev = stdev(minVals);
+      minVals = [];
+      maxVals = [];
       this.readyCallbacks.forEach(c => c());
     }, 10000);
 
@@ -99,9 +99,10 @@ export class Talking {
       }
       minVal = Math.min(minVal, sum);
       maxVal = Math.max(maxVal, sum);
-      minVals.push(minVal);
-      maxVals.push(maxVal);
-      if (statisticsReady) {
+      if (!statisticsReady) {
+        minVals.push(minVal);
+        maxVals.push(maxVal);
+      } else {
         maxVal = maxAvg;
         minVal = minAvg;
         if (!(sum > maxAvg + maxStDev || sum < maxAvg - maxStDev)) {
